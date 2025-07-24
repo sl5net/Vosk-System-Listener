@@ -104,5 +104,4 @@ echo -84-
 echo [SUCCESS] SL5 Dictation is now running in the background.
 echo This window will close automatically.
 timeout /t 4 > nul
-pause
 
