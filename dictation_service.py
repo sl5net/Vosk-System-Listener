@@ -1,6 +1,10 @@
 # File: STT/dictation_service.py
 import os
 import sys
+from datetime import date
+
+import random
+
 
 # ==============================================================================
 # --- PREREQUISITE 1: VIRTUAL ENVIRONMENT CHECK ---
@@ -108,9 +112,18 @@ else:
 TRIGGER_FILE = TMP_DIR / "vosk_trigger"
 HEARTBEAT_FILE = TMP_DIR / "dictation_service.heartbeat"
 PIDFILE = TMP_DIR / "dictation_service.pid"
-LOG_FILE = PROJECT_ROOT / "log/dictation_service.log"
+LOG_DIR = PROJECT_ROOT / "log"
+LOG_FILE = LOG_DIR / "dictation_service.log"
 
-
+if __name__ == "__main__":
+    # --- NEW: Log rotation logic at the very start ---
+    log_path = Path(LOG_DIR) / LOG_FILE
+    if log_path.exists():
+        log_mod_date = date.fromtimestamp(log_path.stat().st_mtime)
+        if log_mod_date < date.today():
+            # Using print because the logger might not be configured yet
+            print(f"Log file from {log_mod_date} is outdated. Deleting old log.")
+            log_path.unlink()
 
 
 
@@ -258,8 +271,41 @@ if DEV_MODE :
     #MODEL_NAME = MODEL_NAME_DEFAULT
 
     lang_code = guess_lt_language_from_model(vosk_model_from_file)
+
+
+
+# CODE_LANGUAGE_DIRECTIVE: ENGLISH_ONLY
+# file: dictation_service.py
+
+
+
+
+# TODO: implement:  --skip-self-test
+
+if random.randint(1, 5) == 1:
+    logger.info("Running randomized self-test...")
     run_core_logic_self_test(logger, TMP_DIR, active_lt_url,lang_code)
+
+else:
+    logger.info("Skipping randomized self-test.")
     #sys.exit(1)
+
+"""
+Ja, deine Vermutung ist absolut richtig.
+
+Der run_core_logic_self_test ist der Prozess, der die vollen ~48 Sekunden in Anspruch nimmt. Der "integrity check" ist nur der allererste Schritt davon.
+
+Die meiste Zeit innerhalb dieses Tests wird für zwei Dinge verbraucht:
+
+Start des LanguageTool-Servers (ca. 30-40 Sek.): Das Skript startet einen Java-Prozess (java -jar ...) und wartet dann in einer Schleife bis zu 20 Sekunden darauf, dass der Server antwortet. Das ist der mit Abstand langsamste Teil.
+
+Laden des Vosk-Modells (ca. 5-10 Sek.): Das Sprachmodell muss in den Arbeitsspeicher geladen werden, was ebenfalls einige Sekunden dauert.
+
+Die eigentlichen 8 Tests (Audio transkribieren etc.) sind danach blitzschnell. Du wartest also hauptsächlich auf das Hochfahren der externen Dienste.
+"""
+
+
+
 
 
 # --- main-logic is in Thread ---
